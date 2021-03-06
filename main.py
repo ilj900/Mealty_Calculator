@@ -11,7 +11,11 @@ class Dish:
     name: str
     category: str
     weight: float
-    calories: float
+    calories_per_100: float
+    total_calories: float
+    carbohydrates: float
+    proteins: float
+    fats: float
     price: float
     factor: float
 
@@ -31,38 +35,41 @@ def generate_courses():
     categories_of_interest.append('drink')
     categories_of_interest.append('bread')
     exceptions = ['Хлеб', 'Тартин', 'Булочка']
-    categories = soup.find_all('div', {'class': ['landingItem'], 'id': categories_of_interest})
-
-    meals = []
-    controls = []
-    for category in categories:
-        meals.extend(category.find_all('div', class_='meal-card'))
-        controls.extend(category.find_all('div', class_='meal-card__controls'))
 
     dishes = []
 
-    for meal, control in zip(meals, controls):
-        if control.find('div', class_="meal-card__buttons out-of-stock-hide hidden"):
-            continue
-        main_name = meal.find('div', class_='meal-card__name').text
-        found = False
-        for exception in exceptions:
-            if exception in main_name or exception.lower() in main_name:
-                found = True
+    for category in categories_of_interest:
+        category_entrance = soup.find('div', {'class': ['landingItem'], 'id': category})
+        all_category_meals = category_entrance.find_all('div', class_='meal-card')
+        all_category_prices = category_entrance.find_all('div', class_='meal-card__controls')
+        for meal_data, price_data in zip(all_category_meals, all_category_prices):
+            if price_data.find('div', class_="meal-card__buttons out-of-stock-hide hidden"):
                 continue
-        if found:
-            break
-        second_name = meal.find('div', class_='meal-card__name-note').text
+            main_name = meal_data.find('div', class_='meal-card__name').text
+            found = False
+            for exception in exceptions:
+                if exception in main_name or exception.lower() in main_name:
+                    found = True
+                    break
+            if found:
+                break
+            second_name = meal_data.find('div', class_='meal-card__name-note').text
 
-        dish = Dish()
-        dish.name = meal.find('div', class_='meal-card__name').text
-        if len(second_name) > 0:
-            dish.name += ' ' + second_name
-        dish.weight = float(meal.find('div', class_='meal-card__weight').text)
-        dish.calories = float(meal.find('div', class_='meal-card__calories').text)
-        dish.price = float(control.find('span', class_='basket__footer-total-count green').text)
-        dish.factor = dish.weight * dish.calories / dish.price / 100.0
-        dishes.append(dish)
+            dish = Dish()
+            dish.name = meal_data.find('div', class_='meal-card__name').text
+            if len(second_name) > 0:
+                dish.name += ' ' + second_name
+            dish.weight = float(meal_data.find('div', class_='meal-card__weight').text)
+            dish.category = category
+            dish.carbohydrates = float(meal_data.find('div', class_='meal-card__carbohydrates').text.replace(',', '.'))
+            dish.proteins = float(meal_data.find('div', class_='meal-card__proteins').text.replace(',', '.'))
+            dish.fats = float(meal_data.find('div', class_='meal-card__fats').text.replace(',', '.'))
+            dish.calories_per_100 = float(meal_data.find('div', class_='meal-card__calories').text)
+            dish.price = float(price_data.find('span', class_='basket__footer-total-count green').text)
+            dish.total_calories = dish.weight * dish.calories_per_100
+            dish.factor = dish.total_calories / dish.price / 100.0
+            dishes.append(dish)
+
 
     dishes.sort()
     for dish in dishes:
