@@ -1,13 +1,17 @@
+import operator
 import requests
+import subprocess
 from bs4 import BeautifulSoup
 
 desired_calories = 1900
+maximum_calories = 2200
 desired_daily_price = 500
-max_dessert_calories = 500
+max_dessert_calories = 600
+max_desserts_in_meal = 1
+max_bread_calories = 600
+
 
 class Dish:
-    def __lt__(self, other):
-        return self.factor < other.factor
     name: str
     category: str
     weight: float
@@ -52,7 +56,7 @@ def generate_courses():
                     found = True
                     break
             if found:
-                break
+                continue
             second_name = meal_data.find('div', class_='meal-card__name-note').text
 
             dish = Dish()
@@ -66,14 +70,53 @@ def generate_courses():
             dish.fats = float(meal_data.find('div', class_='meal-card__fats').text.replace(',', '.'))
             dish.calories_per_100 = float(meal_data.find('div', class_='meal-card__calories').text)
             dish.price = float(price_data.find('span', class_='basket__footer-total-count green').text)
-            dish.total_calories = dish.weight * dish.calories_per_100
-            dish.factor = dish.total_calories / dish.price / 100.0
+            dish.total_calories = dish.weight * dish.calories_per_100 / 100.0
+            dish.factor = dish.total_calories / dish.price
             dishes.append(dish)
 
-
-    dishes.sort()
+    dishes.sort(key=operator.attrgetter('total_calories'))
+    print(str(len(dishes)) + ' dishes in total.')
     for dish in dishes:
-        print(dish.name + ' : ' + str(dish.factor))
+        if dish.category == 'bread':
+            print(dish.name + ' : ' + str(dish.factor))
+
+    # Generate parameters string and run subprocess
+    names_string = ['--Names']
+    categories_string = ['--Categories']
+    weights_string = ['--Weights']
+    calories_per_100_string = ['--CaloriesPer100']
+    total_calories_string = ['--TotalCalories']
+    carbohydrates_string = ['--Carbohydrates']
+    proteins_string = ['--Proteins']
+    fats_string = ['--Fats']
+    prices_string = ['--Prices']
+    factors_string = ['--Factors']
+    for dish in dishes:
+        names_string += dish.name
+        categories_string += dish.category
+        weights_string += "{:.2f}".format(dish.weight)
+        calories_per_100_string += "{:.2f}".format(dish.calories_per_100)
+        total_calories_string += "{:.2f}".format(dish.total_calories)
+        carbohydrates_string += "{:.2f}".format(dish.carbohydrates)
+        proteins_string += "{:.2f}".format(dish.proteins)
+        fats_string += "{:.2f}".format(dish.fats)
+        prices_string += "{:.2f}".format(dish.price)
+        factors_string += "{:.2f}".format(dish.factor)
+
+    args = ["MealMe.exe"]
+    args.extend(names_string)
+    args.extend(categories_string)
+    args.extend(weights_string)
+    args.extend(calories_per_100_string)
+    args.extend(total_calories_string)
+    args.extend(categories_string)
+    args.extend(proteins_string)
+    args.extend(fats_string)
+    args.extend(prices_string)
+    args.extend(factors_string)
+
+    process = subprocess.run(args, shell=False, timeout=300)
+
 
 
 # Press the green button in the gutter to run the script.
