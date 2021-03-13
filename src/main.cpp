@@ -95,8 +95,8 @@ std::vector<std::vector<MenuItem>> GenerateWeeklyRation(std::vector<std::vector<
 
     for (int i = 0; i < 5; ++i)
     {
-        std::mt19937 Generator;
-        Generator.seed(std::chrono::system_clock::now().time_since_epoch().count());
+        std::random_device RandomDevice;
+        std::mt19937 Generator{RandomDevice()};
         std::uniform_int_distribution<int> Distribution(0,int(Solutions.size() - 1));
         auto RandomDailyMeal = std::bind(Distribution, Generator);
 
@@ -203,8 +203,8 @@ int main(int argc, char* argv[])
     }
 
     // Sort so the drinks, bread and snacks are first
-    int l = 0;
-    int r = Menu.size() - 1;
+    std::size_t l = 0;
+    std::size_t r = Menu.size() - 1;
     while(l < r)
     {
         while(Menu[l].Category == "drink" || Menu[l].Category == "bread" || Menu[l].Category == "snack")
