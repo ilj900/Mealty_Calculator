@@ -6,13 +6,14 @@
 #include <fstream>
 #include <random>
 #include <functional>
+#include <chrono>
 
 using json = nlohmann::json;
 
 // Parameters
 static float MaximumMealCalories = 2000.f;
 static float MinimumMealCalories = 1900.f;
-static float MinMealFactor = 3.8f;
+static float MinMealFactor = 3.5f;
 static int MinMealPerDay = 4;
 static int MaxMealsPerDay = 5;
 static int Days = 5;
@@ -95,6 +96,7 @@ std::vector<std::vector<MenuItem>> GenerateWeeklyRation(std::vector<std::vector<
     for (int i = 0; i < 5; ++i)
     {
         std::mt19937 Generator;
+        Generator.seed(std::chrono::system_clock::now().time_since_epoch().count());
         std::uniform_int_distribution<int> Distribution(0,int(Solutions.size() - 1));
         auto RandomDailyMeal = std::bind(Distribution, Generator);
 
@@ -241,21 +243,28 @@ int main(int argc, char* argv[])
 
     auto WeeklyRation = GenerateWeeklyRation(Solutions);
 
+    std::ofstream OutputFile;
+    OutputFile.open("Ration.txt");
+    if (!OutputFile.is_open())
+    {
+        return -1;
+    }
     for (int i = 0; i < WeeklyRation.size(); ++i)
     {
         float DailyCalories = 0.f;
         float DailyPrice = 0.f;
-        std::cout << "Day " << i+1 << std::endl;
+        OutputFile << "Day " << i+1 << std::endl;
         for (int j = 0; j < WeeklyRation[i].size(); ++j)
         {
-            std::cout << j+1 << ": " << WeeklyRation[i][j].Name << " " << WeeklyRation[i][j].AdditionalName << std::endl;
+            OutputFile << j+1 << ": " << WeeklyRation[i][j].Name << " " << WeeklyRation[i][j].AdditionalName << std::endl;
             DailyCalories += WeeklyRation[i][j].TotalCalories;
             DailyPrice += WeeklyRation[i][j].Price;
         }
-        std::cout << "Total daily calories:" << DailyCalories << std::endl;
-        std::cout << "Total price: " << DailyPrice << std::endl;
-        std::cout << "Factor: " << DailyCalories / DailyPrice << std::endl << std::endl;
+        OutputFile << "Total daily calories:" << DailyCalories << std::endl;
+        OutputFile << "Total price: " << DailyPrice << std::endl;
+        OutputFile << "Factor: " << DailyCalories / DailyPrice << std::endl << std::endl;
     }
+    OutputFile.close();
 
     return 0;
 }
