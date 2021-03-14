@@ -18,7 +18,9 @@ static int MinMealPerDay = 4;
 static int MaxMealsPerDay = 5;
 static int Days = 5;
 static std::vector<std::string> CategoriesToSkip = {"food", "almost_ready"};
-static std::vector<std::string> DishesToSkip = {"Хлеб", "хлеб", "Булочка", "булочка", "Тартин", "тартин"};  // Add lowercase strings here, C++ has no built-in function to transform strings to lowercase
+static std::vector<std::string> DishesToSkip = {"Хлеб", "хлеб", "Булочка", "булочка", "Тартин", "тартин", "Оливье", "оливье", "Пирожки", "пирожки",
+                                                "Торт", "торт", "Напиток", "напиток", "Сэндвич", "сэндвич", "Бургер", "бургер", "Капрезе", "капрезе",
+                                                "Кус-кус", "кус-кус", "Булгур", "булгур", "Кекс", "кекс", "Фондан", "фондан"};  // Add lowercase strings here, C++ has no built-in function to transform russian strings to lowercase
 
 struct MenuItem
 {
@@ -41,6 +43,14 @@ public:
     static unsigned int Counter;
 
     bool operator==(const MenuItem& Other) {return Other.Id == Id;}
+    static bool CompareByWeight(const MenuItem& Var1, const MenuItem& Var2) {return Var1.Weight > Var2.Weight;}
+    static bool CompareByCaloriesPer100(const MenuItem& Var1, const MenuItem& Var2) {return Var1.CaloriesPer100 > Var2.CaloriesPer100;}
+    static bool CompareByTotalCalories(const MenuItem& Var1, const MenuItem& Var2) {return Var1.TotalCalories > Var2.TotalCalories;}
+    static bool CompareByCarbohydrates(const MenuItem& Var1, const MenuItem& Var2) {return Var1.Carbohydrates > Var2.Carbohydrates;}
+    static bool CompareByProteins(const MenuItem& Var1, const MenuItem& Var2) {return Var1.Proteins > Var2.Proteins;}
+    static bool CompareByFats(const MenuItem& Var1, const MenuItem& Var2) {return Var1.Fats > Var2.Fats;}
+    static bool CompareByPrice(const MenuItem& Var1, const MenuItem& Var2) {return Var1.Price > Var2.Price;}
+    static bool CompareByFactor(const MenuItem& Var1, const MenuItem& Var2) {return Var1.Factor > Var2.Factor;}
 };
 
 unsigned int MenuItem::Counter = 0u;
@@ -192,7 +202,7 @@ int main(int argc, char* argv[])
         // Exclude dishes we don't want
         for (auto& DishName : DishesToSkip)
         {
-            if (Menu[i].Name.find(DishName) != std::string::npos)
+            if (Menu[i].Name.find(DishName) != std::string::npos || Menu[i].AdditionalName.find(DishName) != std::string::npos)
             {
                 Menu[i] = Menu.back();
                 Menu.pop_back();
@@ -214,6 +224,17 @@ int main(int argc, char* argv[])
         auto T = Menu[l];
         Menu[l] = Menu[r];
         Menu[r] = T;
+    }
+
+    if (false)
+    {
+        // Sort by some parameter and print data
+        std::sort(Menu.begin(), Menu.end(), MenuItem::CompareByFactor);
+        for (auto& Item : Menu)
+        {
+            std::cout << Item.Factor << ": " << Item.Name << " " << Item.AdditionalName << std::endl;
+        }
+        return 0;
     }
 
     std::cout<< "Menu enlists " << Menu.size() << " positions." << std::endl;
