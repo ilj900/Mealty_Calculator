@@ -7,6 +7,7 @@
 #include <random>
 #include <functional>
 #include <chrono>
+#include <map>
 
 using json = nlohmann::json;
 
@@ -55,53 +56,117 @@ public:
 
 unsigned int MenuItem::Counter = 0u;
 
-void RecursiveComposition(std::vector<std::vector<MenuItem>>& Solutions, std::vector<MenuItem>& Menu, size_t StartingIndex, std::vector<MenuItem> &DailyRation, float TotalCalories, float TotalPrice, bool DesertIncluded)
+struct DailyRation
+{
+    std::vector<MenuItem> Meals;
+    std::map<std::string, int> Categories;
+
+    float TotalCalories = 0.f;
+    float TotalPrice = 0.f;
+    float TotalCarbohydrates = 0.f;
+    float TotalProteins = 0.f;
+    float TotalFats = 0.f;
+    float Factor = 0.f;
+
+    DailyRation& operator+=(const MenuItem& Item)
+    {
+        Meals.push_back(Item);
+        ++Categories[Item.Category];
+        TotalCalories += Item.TotalCalories;
+        TotalPrice += Item.Price;
+        TotalCarbohydrates += Item.Carbohydrates;
+        TotalProteins += Item.Proteins;
+        TotalFats += Item.Fats;
+        Factor = TotalCalories / TotalPrice;
+        return *this;
+    }
+
+    DailyRation& operator-=(const MenuItem& Item)
+    {
+        for (std::size_t i = 0; i < Meals.size(); ++i)
+        {
+            if (Item.Id == Meals[i].Id)
+            {
+                // Remove element
+                if (i != Meals.size() - 1)
+                    Meals[i] = Meals.back();
+                Meals.pop_back();
+
+                // Change data accordingly
+                --Categories[Item.Category];
+                TotalCalories -= Item.TotalCalories;
+                TotalPrice -= Item.Price;
+                TotalCarbohydrates -= Item.Carbohydrates;
+                TotalProteins -= Item.Proteins;
+                TotalFats -= Item.Fats;
+                if (Meals.size() != 0)
+                {
+                    Factor = TotalCalories / TotalPrice;
+                }
+                else
+                {
+                    Factor = 0.f;
+                }
+                return *this;
+            }
+        }
+        return *this;
+    }
+
+    static bool CompareByTotalCalories(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalCalories > Var2.TotalCalories;}
+    static bool CompareByCarbohydrates(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalCarbohydrates > Var2.TotalCarbohydrates;}
+    static bool CompareByProteins(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalProteins > Var2.TotalProteins;}
+    static bool CompareByFats(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalFats > Var2.TotalFats;}
+    static bool CompareByPrice(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalPrice > Var2.TotalPrice;}
+    static bool CompareByFactor(const DailyRation& Var1, const DailyRation& Var2) {return Var1.Factor > Var2.Factor;}
+
+    auto Size() {return Meals.size();}
+
+    auto TotalOfCategory(const std::string& Category) {return Categories[Category];}
+
+    auto GetFactor() {return Factor;};
+
+
+};
+
+void RecursiveComposition(std::vector<DailyRation>& DailyRations, std::vector<MenuItem>& Menu, size_t StartingIndex, DailyRation &DailyRation)
 {
     for (std::size_t i = StartingIndex; i < Menu.size(); ++i)
     {
         MenuItem& Meal = Menu[i];
-        DailyRation.push_back(Meal);
-        TotalCalories += Meal.TotalCalories;
-        TotalPrice += Meal.Price;
-        bool IsDessert = Meal.Category == "drink" || Meal.Category == "bread" || Meal.Category == "snack";
+        DailyRation += Meal;
 
         // If DailyRation has more calories than we need
         // Or if DailyRation has more dishes than needed
         // Or if it's second dessert
-        if ((TotalCalories > MaximumMealCalories) || (DailyRation.size() >= MaxMealsPerDay) || (IsDessert && DesertIncluded))
+        if ((DailyRation.TotalCalories > MaximumMealCalories) || (DailyRation.Size() >= MaxMealsPerDay) || (DailyRation.TotalOfCategory("drink") + DailyRation.TotalOfCategory("snack") + DailyRation.TotalOfCategory("bread") > 1))
         {
-            DailyRation.pop_back();
-            TotalCalories -= Meal.TotalCalories;
-            TotalPrice -= Meal.Price;
+            DailyRation -= Meal;
             continue;
         }
         // If Meal has more calories that minimum then we need to check it
-        if (TotalCalories > MinimumMealCalories)
+        if (DailyRation.TotalCalories > MinimumMealCalories)
         {
             // If meal's factor fits then we save it
-            if (TotalCalories / TotalPrice > MinMealFactor && DailyRation.size() >= MinMealPerDay)
+            if (DailyRation.Factor > MinMealFactor && DailyRation.Size() >= MinMealPerDay)
             {
-                Solutions.push_back(DailyRation);
+                DailyRations.push_back(DailyRation);
             }
-            DailyRation.pop_back();
-            TotalCalories -= Meal.TotalCalories;
-            TotalPrice -= Meal.Price;
+            DailyRation -= Meal;
             continue;
         }
 
-        RecursiveComposition(Solutions, Menu, i + 1, DailyRation, TotalCalories, TotalPrice, IsDessert);
+        RecursiveComposition(DailyRations, Menu, i + 1, DailyRation);
 
-        DailyRation.pop_back();
-        TotalCalories -= Meal.TotalCalories;
-        TotalPrice -= Meal.Price;
+        DailyRation -= Meal;
     }
 
     return;
 }
 
-std::vector<std::vector<MenuItem>> GenerateWeeklyRation(std::vector<std::vector<MenuItem>>& Solutions)
+std::vector<DailyRation> GenerateWeeklyRation(std::vector<DailyRation>& Solutions)
 {
-    std::vector<std::vector<MenuItem>> WeeklyRation;
+    std::vector<DailyRation> WeeklyRation;
 
     for (int i = 0; i < 5; ++i)
     {
@@ -114,11 +179,11 @@ std::vector<std::vector<MenuItem>> GenerateWeeklyRation(std::vector<std::vector<
         auto DailyRation = Solutions[Index];
         WeeklyRation.push_back(DailyRation);
 
-        for (auto Meal : DailyRation)
+        for (auto Meal : DailyRation.Meals)
         {
             for(int i = 0; i < Solutions.size(); ++i)
             {
-                for (auto Single : Solutions[i])
+                for (auto Single : Solutions[i].Meals)
                 {
                     if (Single == Meal)
                     {
@@ -229,22 +294,19 @@ int main(int argc, char* argv[])
     if (false)
     {
         // Sort by some parameter and print data
-        std::sort(Menu.begin(), Menu.end(), MenuItem::CompareByFactor);
+        std::sort(Menu.begin(), Menu.end(), MenuItem::CompareByCarbohydrates);
         for (auto& Item : Menu)
         {
-            std::cout << Item.Factor << ": " << Item.Name << " " << Item.AdditionalName << std::endl;
+            std::cout << Item.Carbohydrates << ": " << Item.Name << " " << Item.AdditionalName << std::endl;
         }
         return 0;
     }
 
     std::cout<< "Menu enlists " << Menu.size() << " positions." << std::endl;
 
-    std::vector<std::vector<MenuItem>> Solutions;
-    float TotalCalories = 0.f;
-    float TotalPrice = 0.f;
-    bool Drink = false;
-    static std::vector<MenuItem> DailyRation;
-    RecursiveComposition(Solutions, Menu, 0, DailyRation, TotalCalories, TotalPrice, Drink);
+    std::vector<DailyRation> Solutions;
+    static DailyRation DailyRation;
+    RecursiveComposition(Solutions, Menu, 0, DailyRation);
 
     std::cout << "Total of " << Solutions.size() << " daily rations found." << std::endl;
     for (int i = 0; i <= MaxMealsPerDay; ++i)
@@ -252,7 +314,7 @@ int main(int argc, char* argv[])
         int j = 0;
         for (auto& Solution : Solutions)
         {
-            if (Solution.size() == i)
+            if (Solution.Size() == i)
             {
                 ++j;
             }
@@ -275,11 +337,11 @@ int main(int argc, char* argv[])
         float DailyCalories = 0.f;
         float DailyPrice = 0.f;
         OutputFile << "Day " << i+1 << std::endl;
-        for (int j = 0; j < WeeklyRation[i].size(); ++j)
+        for (int j = 0; j < WeeklyRation[i].Size(); ++j)
         {
-            OutputFile << j+1 << ": " << WeeklyRation[i][j].Name << " " << WeeklyRation[i][j].AdditionalName << std::endl;
-            DailyCalories += WeeklyRation[i][j].TotalCalories;
-            DailyPrice += WeeklyRation[i][j].Price;
+            OutputFile << j+1 << ": " << WeeklyRation[i].Meals[j].Name << " " << WeeklyRation[i].Meals[j].AdditionalName << std::endl;
+            DailyCalories += WeeklyRation[i].Meals[j].TotalCalories;
+            DailyPrice += WeeklyRation[i].Meals[j].Price;
         }
         OutputFile << "Total daily calories:" << DailyCalories << std::endl;
         OutputFile << "Total price: " << DailyPrice << std::endl;
