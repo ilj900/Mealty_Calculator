@@ -68,6 +68,16 @@ struct DailyRation
     float TotalFats = 0.f;
     float Factor = 0.f;
 
+    DailyRation(const std::vector<MenuItem>& MenuItems)
+    {
+        for (auto& Item : MenuItems)
+        {
+            *this += Item;
+        }
+    }
+
+    DailyRation() {}
+
     DailyRation& operator+=(const MenuItem& Item)
     {
         Meals.push_back(Item);
@@ -110,7 +120,55 @@ struct DailyRation
                 return *this;
             }
         }
+        throw std::runtime_error("An attempt to remove non-existing meal.");
+    }
+
+    DailyRation& Pop()
+    {
+        if (Meals.size() == 0)
+        {
+            throw std::runtime_error("Array is empty.");
+        }
+        auto MenuItem = Meals.back();
+
+        --Categories[MenuItem.Category];
+        TotalCalories -= MenuItem.TotalCalories;
+        TotalPrice -= MenuItem.Price;
+        TotalCarbohydrates -= MenuItem.Carbohydrates;
+        TotalProteins -= MenuItem.Proteins;
+        TotalFats -= MenuItem.Fats;
+
+        Meals.pop_back();
+
+        if (Meals.size() != 0)
+        {
+            Factor = TotalCalories / TotalPrice;
+        }
+        else
+        {
+            Factor = 0.f;
+        }
+
         return *this;
+    }
+
+    bool operator==(const DailyRation& Other)
+    {
+        std::map<std::uint32_t, int> MealMap;
+        for (auto& Meal : Meals)
+        {
+            ++MealMap[Meal.Id];
+        }
+        for(auto& Meal : Other.Meals)
+        {
+            --MealMap[Meal.Id];
+        }
+        for (auto& M : MealMap)
+        {
+            if (M.second != 0)
+                return false;
+        }
+        return true;
     }
 
     static bool CompareByTotalCalories(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalCalories > Var2.TotalCalories;}
@@ -129,36 +187,38 @@ struct DailyRation
 
 };
 
-void RecursiveComposition(std::vector<DailyRation>& DailyRations, std::vector<MenuItem>& Menu, size_t StartingIndex, DailyRation &DailyRation)
+void RecursiveComposition(std::vector<DailyRation>& DailyRations, std::vector<MenuItem>& Menu, size_t StartingIndex, DailyRation &Ration)
 {
     for (std::size_t i = StartingIndex; i < Menu.size(); ++i)
     {
         MenuItem& Meal = Menu[i];
-        DailyRation += Meal;
+        Ration += Meal;
 
         // If DailyRation has more calories than we need
         // Or if DailyRation has more dishes than needed
         // Or if it's second dessert
-        if ((DailyRation.TotalCalories > MaximumMealCalories) || (DailyRation.Size() >= MaxMealsPerDay) || (DailyRation.TotalOfCategory("drink") + DailyRation.TotalOfCategory("snack") + DailyRation.TotalOfCategory("bread") > 1))
+        if ((Ration.TotalCalories > MaximumMealCalories) ||
+        (Ration.Size() >= MaxMealsPerDay) ||
+        (Ration.TotalOfCategory("drink") + Ration.TotalOfCategory("snack") + Ration.TotalOfCategory("bread") > 1))
         {
-            DailyRation -= Meal;
+            Ration.Pop();
             continue;
         }
         // If Meal has more calories that minimum then we need to check it
-        if (DailyRation.TotalCalories > MinimumMealCalories)
+        if (Ration.TotalCalories > MinimumMealCalories)
         {
             // If meal's factor fits then we save it
-            if (DailyRation.Factor > MinMealFactor && DailyRation.Size() >= MinMealPerDay)
+            if (Ration.Factor > MinMealFactor && Ration.Size() >= MinMealPerDay)
             {
-                DailyRations.push_back(DailyRation);
+                DailyRations.push_back(Ration);
             }
-            DailyRation -= Meal;
+            Ration.Pop();
             continue;
         }
 
-        RecursiveComposition(DailyRations, Menu, i + 1, DailyRation);
+        RecursiveComposition(DailyRations, Menu, i + 1, Ration);
 
-        DailyRation -= Meal;
+        Ration.Pop();
     }
 
     return;
@@ -168,7 +228,7 @@ std::vector<DailyRation> GenerateWeeklyRation(std::vector<DailyRation>& Solution
 {
     std::vector<DailyRation> WeeklyRation;
 
-    for (int i = 0; i < 5; ++i)
+    for (int day = 0; day < 5; ++day)
     {
         std::random_device RandomDevice;
         std::mt19937 Generator{RandomDevice()};
@@ -305,8 +365,8 @@ int main(int argc, char* argv[])
     std::cout<< "Menu enlists " << Menu.size() << " positions." << std::endl;
 
     std::vector<DailyRation> Solutions;
-    static DailyRation DailyRation;
-    RecursiveComposition(Solutions, Menu, 0, DailyRation);
+    DailyRation Ration;
+    RecursiveComposition(Solutions, Menu, 0, Ration);
 
     std::cout << "Total of " << Solutions.size() << " daily rations found." << std::endl;
     for (int i = 0; i <= MaxMealsPerDay; ++i)
