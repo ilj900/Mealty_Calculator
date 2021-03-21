@@ -11,17 +11,27 @@
 
 using json = nlohmann::json;
 
-// Parameters
-static float MaximumMealCalories = 2000.f;
-static float MinimumMealCalories = 1900.f;
-static float MinMealFactor = 3.5f;
-static int MinMealPerDay = 4;
-static int MaxMealsPerDay = 5;
-static int Days = 5;
-static std::vector<std::string> CategoriesToSkip = {"food", "almost_ready"};
-static std::vector<std::string> DishesToSkip = {"Хлеб", "хлеб", "Булочка", "булочка", "Тартин", "тартин", "Оливье", "оливье", "Пирожки", "пирожки",
-                                                "Торт", "торт", "Напиток", "напиток", "Сэндвич", "сэндвич", "Бургер", "бургер", "Капрезе", "капрезе",
-                                                "Кус-кус", "кус-кус", "Булгур", "булгур", "Кекс", "кекс", "Фондан", "фондан"};  // Add lowercase strings here, C++ has no built-in function to transform russian strings to lowercase
+struct FOptions
+{
+    float MaximumMealCalories = 2000.f;
+    float MinimumMealCalories = 1900.f;
+    int Days = 5;
+    float MaxDailyPrice = 550.f;
+    int MinMealsPerDay = 4;
+    int MaxMealsPerDay = 5;
+    float Factor = MinimumMealCalories / MaxDailyPrice;
+    std::vector<std::string> Categories = {"breakfast", "salad", "soup", "main_dish", "drink", "bread", "snack"};
+    std::vector<std::string> Exceptions = {"Хлеб", "хлеб", "Булочка", "булочка", "Тартин", "тартин", "Оливье",
+                                           "оливье", "Пирожки", "пирожки", "Торт", "торт", "Напиток", "напиток", "Сэндвич",
+                                           "сэндвич", "Бургер", "бургер", "Капрезе", "капрезе", "Кус-кус", "кус-кус",
+                                           "Булгур", "булгур", "Кекс", "кекс", "Фондан", "фондан"};
+    std::vector<std::pair<std::vector<std::string>, int>> Limitations = {{{"drink", "bread", "snack"}, 1},
+                                                                         {{"salad"}, 2},
+                                                                         {{"breakfast"}, 2},
+                                                                         {{"main_dish"}, 2},
+                                                                         {{"soup"}, 2}, };
+    int MaxMealRepeat = 1;
+};
 
 struct MenuItem
 {
@@ -117,15 +127,17 @@ struct DailyRation
         return *this;
     }
 
-    void Print()
+    int GetMaxCategory()
     {
-        for (std::size_t i = 0; i < Meals.size(); ++i)
+        int Max = 0;
+        for (auto& Category : Categories)
         {
-            std::cout << "    " << i << ": " << Meals[i].Name << " " << Meals[i].AdditionalName << " : " << Meals[i].Id << std::endl;
+            if (Category.second > Max)
+            {
+                Max = Category.second;
+            }
         }
-        std::cout << "    Total calories: " << TotalCalories.back() << std::endl;
-        std::cout << "    Total price: " << TotalPrice.back() << std::endl;
-        std::cout << "    Factor: " << GetFactor() << std::endl;
+        return Max;
     }
 
     float GetFactor() const
@@ -137,7 +149,30 @@ struct DailyRation
         return 0.f;
     }
 
-    bool operator==(const DailyRation& Other)
+    void Print() const
+    {
+        for (std::size_t i = 0; i < Meals.size(); ++i)
+        {
+            std::cout << "    " << i << ": " << Meals[i].Name << " " << Meals[i].AdditionalName << " : " << Meals[i].Id << std::endl;
+        }
+        std::cout << "    Total calories: " << TotalCalories.back() << std::endl;
+        std::cout << "    Total price: " << TotalPrice.back() << std::endl;
+        std::cout << "    Factor: " << GetFactor() << std::endl;
+    }
+
+    std::ostream& operator<<(std::ostream &out)
+    {
+        for (std::size_t i = 0; i < Meals.size(); ++i)
+        {
+            out << "    " << i << ": " << Meals[i].Name << " " << Meals[i].AdditionalName << " : " << Meals[i].Id << std::endl;
+        }
+        out << "    Total calories: " << TotalCalories.back() << std::endl;
+        out << "    Total price: " << TotalPrice.back() << std::endl;
+        out << "    Factor: " << GetFactor() << std::endl;
+        return out;
+    }
+
+    bool operator==(const DailyRation& Other) const
     {
         std::map<std::uint32_t, int> MealMap;
         for (auto& Meal : Meals)
@@ -163,13 +198,19 @@ struct DailyRation
     static bool CompareByPrice(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalPrice.back() > Var2.TotalPrice.back();}
     static bool CompareByFactor(const DailyRation& Var1, const DailyRation& Var2) {return Var1.GetFactor() > Var2.GetFactor();}
 
-    auto Size() {return Meals.size();}
+    auto Size() {return Meals.size();} const
 
-    auto TotalOfCategory(const std::string& Category) {return Categories[Category];}
+    auto TotalOfCategory(const std::string& Category) const
+    {
+        if (Categories.find(Category) != Categories.end()) {
+            return Categories.at(Category);
+        }
+        return 0;
+    }
 
 };
 
-void RecursiveComposition(std::vector<DailyRation>& DailyRations, const std::vector<MenuItem>& Menu, size_t StartingIndex, DailyRation &Ration)
+void RecursiveComposition(std::vector<DailyRation>& DailyRations, const std::vector<MenuItem>& Menu, size_t StartingIndex, DailyRation &Ration, const FOptions& Options)
 {
     for (std::size_t i = StartingIndex; i < Menu.size(); ++i)
     {
@@ -177,19 +218,42 @@ void RecursiveComposition(std::vector<DailyRation>& DailyRations, const std::vec
 
         // If DailyRation has more calories than we need
         // Or if DailyRation has more dishes than needed
-        // Or if it's second dessert
-        if ((Ration.TotalCalories.back() > MaximumMealCalories) ||
-        (Ration.Size() >= MaxMealsPerDay) ||
-        (Ration.TotalOfCategory("drink") + Ration.TotalOfCategory("snack") + Ration.TotalOfCategory("bread") > 1))
+        if ((Ration.TotalCalories.back() > Options.MaximumMealCalories) ||
+        (Ration.Size() >= Options.MaxMealsPerDay))
         {
             Ration.Pop();
             continue;
         }
-        // If Meal has more calories that minimum then we need to check it
-        if (Ration.TotalCalories.back() > MinimumMealCalories)
+
+        bool Found = false;
+        for (auto& Limitation : Options.Limitations)
+        {
+            int Count = 0;
+            for (auto& Category : Limitation.first)
+            {
+                Count+= Ration.TotalOfCategory(Category);
+                if (Count > Limitation.second)
+                {
+                    Found = true;
+                    break;
+                }
+            }
+            if (Found)
+            {
+                break;
+            }
+        }
+        if (Found)
+        {
+            Ration.Pop();
+            continue;
+        }
+
+        // If Meal has more calories than minimum that we need to check it
+        if (Ration.TotalCalories.back() > Options.MinimumMealCalories)
         {
             // If meal's factor fits then we save it
-            if (Ration.GetFactor() > MinMealFactor && Ration.Size() >= MinMealPerDay)
+            if (Ration.GetFactor() > Options.Factor && Ration.Size() >= Options.MinMealsPerDay)
             {
                 DailyRations.push_back(Ration);
             }
@@ -197,7 +261,7 @@ void RecursiveComposition(std::vector<DailyRation>& DailyRations, const std::vec
             continue;
         }
 
-        RecursiveComposition(DailyRations, Menu, i + 1, Ration);
+        RecursiveComposition(DailyRations, Menu, i + 1, Ration, Options);
 
         Ration.Pop();
     }
@@ -262,6 +326,34 @@ void from_json(const json& Json, MenuItem& Item)
     Json.at("available").get_to(Item.Available);
 }
 
+void from_json(const json& Json, FOptions& Options)
+{
+    Json.at("MaxCalories").get_to(Options.MaximumMealCalories);
+    Json.at("MinCalories").get_to(Options.MinimumMealCalories);
+    Json.at("Days").get_to(Options.Days);
+    Json.at("MinMealsPerDay").get_to(Options.MinMealsPerDay);
+    Json.at("MaxMealsPerDay").get_to(Options.MaxMealsPerDay);
+    Json.at("MaxDailyPrice").get_to(Options.MaxDailyPrice);
+    Json.at("MaxMealRepeat").get_to(Options.MaxMealRepeat);
+    Options.Categories.resize(0);
+    Json.at("Categories").get_to(Options.Categories);\
+    Options.Exceptions.resize(0);
+    Json.at("Exceptions").get_to(Options.Exceptions);
+    json Limitations = Json.at("Limitations");
+    Options.Limitations.resize(0);
+    for (auto& Limitation : Limitations)
+    {
+        std::vector<std::string> CategoryLimitation;
+        auto Value = std::stoi(Limitation["Count"].get<std::string>());
+        for(auto& Str : Limitation["Categories"])
+        {
+            CategoryLimitation.push_back(Str.get<std::string>());
+        }
+        Options.Limitations.push_back({CategoryLimitation, Value});
+    }
+    Options.Factor = Options.MinimumMealCalories / Options.MaxDailyPrice;
+}
+
 int main(int argc, char* argv[])
 {
     system("chcp 65001");
@@ -269,67 +361,97 @@ int main(int argc, char* argv[])
     std::vector<MenuItem> Menu;
 
     // Load menu
-    std::ifstream File("../Menu.json", std::ifstream::in);
-    if (!File.is_open())
+    std::ifstream MenuFile("../Menu.json", std::ifstream::in);
+    if (!MenuFile.is_open())
         return -1;
-    json Json;
-    File >> Json;
-    auto MenuJson = Json["Menu"];
-    for (auto MenuItemJson : MenuJson)
+    json JsonMenu;
+    MenuFile >> JsonMenu;
+    for (auto JsonMenuItem : JsonMenu["Menu"])
     {
-        MenuItem Item = MenuItemJson.get<MenuItem>();
+        MenuItem Item = JsonMenuItem.get<MenuItem>();
         Menu.push_back(Item);
     }
 
-    // Filter menu
-    for (int i = 0; i < Menu.size(); ++i)
+    // Load options
+    std::ifstream OptionsFile("../Options.json", std::ifstream::in);
+    if (!OptionsFile.is_open())
+        return -1;
+    json JsonOptions;
+    OptionsFile >> JsonOptions;
+    FOptions Options = JsonOptions["Options"];
+
+    // Filter Menu
+    Menu.erase(std::remove_if(Menu.begin(), Menu.end(), [&Options](const MenuItem& Item)
     {
-        // If MenuItem is out of stock then remove it
-        if (!Menu[i].Available)
+        // It that lambda returns true then item will be removed
+        // If Item is not available
+        if (!Item.Available)
         {
-            Menu[i] = Menu.back();
-            Menu.pop_back();
-            --i;
-            continue;
+            return true;
         }
 
-        // Exclude dishes from categories we don't want
-        for (auto& CategoryName : CategoriesToSkip)
+        // If it and exception
+        for (auto& Exception : Options.Exceptions)
         {
-            if (Menu[i].Category == CategoryName)
+            if (Item.Name.find(Exception) != std::string::npos || Item.AdditionalName.find(Exception) != std::string::npos)
+                return true;
+        }
+
+        // If Item is from category we don't need
+        for (auto& Category :Options.Categories)
+        {
+            if (Category == Item.Category)
             {
-                Menu[i] = Menu.back();
-                Menu.pop_back();
-                --i;
-                continue;
+                return false;
             }
         }
+        return true;
+    }), Menu.end());
 
-        // Exclude dishes we don't want
-        for (auto& DishName : DishesToSkip)
-        {
-            if (Menu[i].Name.find(DishName) != std::string::npos || Menu[i].AdditionalName.find(DishName) != std::string::npos)
-            {
-                Menu[i] = Menu.back();
-                Menu.pop_back();
-                --i;
-                continue;
-            }
-        }
-    }
 
-    // Sort so the drinks, bread and snacks are first
-    std::size_t l = 0;
-    std::size_t r = Menu.size() - 1;
-    while(l < r)
+    // Sort the menu by category, taking into account Limitations. This should speed up recursive generation process.
+    std::size_t p = 0;
+    for (auto& Limitation : Options.Limitations)
     {
-        while(Menu[l].Category == "drink" || Menu[l].Category == "bread" || Menu[l].Category == "snack")
-            ++l;
-        while(!(Menu[r].Category == "drink" || Menu[r].Category == "bread" || Menu[r].Category == "snack"))
-            --r;
-        auto T = Menu[l];
-        Menu[l] = Menu[r];
-        Menu[r] = T;
+        std::size_t l = p;
+        std::size_t r = Menu.size() - 1;
+        while (l < r)
+        {
+            while (l < r)
+            {
+                bool found = false;
+                for(auto& Category : Limitation.first)
+                {
+                    if (Category == Menu[l].Category)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                    break;
+                ++l;
+            }
+            while (l < r)
+            {
+                bool found = false;
+                for(auto& Category : Limitation.first)
+                {
+                    if (Category == Menu[r].Category)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if (found)
+                    break;
+                --r;
+            }
+            auto T = Menu[l];
+            Menu[l] = Menu[r];
+            Menu[r] = T;
+            p = l;
+        }
     }
 
     if (false)
@@ -347,23 +469,20 @@ int main(int argc, char* argv[])
 
     std::vector<DailyRation> Solutions;
     DailyRation Ration;
-    RecursiveComposition(Solutions, Menu, 0, Ration);
-
+    auto Start = std::chrono::steady_clock::now();
+    RecursiveComposition(Solutions, Menu, 0, Ration, Options);
+    auto End = std::chrono::steady_clock::now();
+    std::cout<<"Recursive time: " << std::chrono::duration<float>(End-Start).count() << std::endl;
 
     std::cout << "Total of " << Solutions.size() << " daily rations found." << std::endl;
-    for (int i = 0; i <= MaxMealsPerDay; ++i)
+    std::map<int, std::size_t> Dispersion;
+    for(auto& Solution : Solutions)
     {
-        int j = 0;
-        for (auto& Solution : Solutions)
-        {
-            if (Solution.Size() == i)
-            {
-                ++j;
-            }
-        }
-        if (j != 0) {
-            std::cout << j << " Daily rations with " << i << " meals." << std::endl;
-        }
+        ++Dispersion[Solution.Size()];
+    }
+    for (auto& Iter : Dispersion)
+    {
+        std::cout << Iter.first << "-meal solutions: " << Iter.second << std::endl;
     }
 
     auto WeeklyRation = GenerateWeeklyRation(Solutions);

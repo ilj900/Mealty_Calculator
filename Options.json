@@ -1,0 +1,28 @@
+{
+  "Options" : {
+    "MaxCalories" : 2000.0,
+    "MinCalories" : 1900.0,
+    "Days" : 5,
+    "MinMealsPerDay" : 4,
+    "MaxMealsPerDay" : 5,
+    "MaxDailyPrice" : 550,
+    "Categories" : ["breakfast", "salad", "soup", "main_dish", "drink", "bread", "snack"],
+    "Limitations" : [
+      {"Count": "1",
+        "Categories":  ["drink", "bread", "snack"]},
+      {"Count": "2",
+        "Categories":  ["salad"]},
+      {"Count": "2",
+        "Categories":  ["breakfast"]},
+      {"Count": "2",
+        "Categories":  ["main_dish"]},
+      {"Count": "2",
+        "Categories":  ["soup"]}
+    ],
+    "Exceptions" : ["Хлеб", "хлеб", "Булочка", "булочка", "Тартин", "тартин", "Оливье",
+      "оливье", "Пирожки", "пирожки", "Торт", "торт", "Напиток", "напиток", "Сэндвич",
+      "сэндвич", "Бургер", "бургер", "Капрезе", "капрезе", "Кус-кус", "кус-кус",
+      "Булгур", "булгур", "Кекс", "кекс", "Фондан", "фондан"],
+    "MaxMealRepeat" : 1
+  }
+}
