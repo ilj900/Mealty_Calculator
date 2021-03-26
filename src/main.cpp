@@ -8,6 +8,7 @@
 #include <functional>
 #include <chrono>
 #include <map>
+#include <iomanip>
 
 using json = nlohmann::json;
 
@@ -81,6 +82,12 @@ struct DailyRation
     std::vector<float> TotalProteins;
     std::vector<float> TotalFats;
 
+    float GetTotalPrice() const {return TotalPrice.back();}
+    float GetTotalCalories() const {return TotalCalories.back();}
+    float GetTotalCarbohydrates() const {return TotalCarbohydrates.back();}
+    float GetTotalProteins() const {return TotalProteins.back();}
+    float GetTotalFats() const {return TotalFats.back();}
+
     DailyRation(const std::vector<MenuItem>& MenuItems)
     {
         for (auto& Item : MenuItems)
@@ -98,17 +105,17 @@ struct DailyRation
         {
             TotalPrice.push_back(TotalPrice.back() + Item.Price);
             TotalCalories.push_back(TotalCalories.back() + Item.TotalCalories);
-            TotalCarbohydrates.push_back(TotalCarbohydrates.back() + Item.Carbohydrates);
-            TotalProteins.push_back(TotalProteins.back() + Item.Proteins);
-            TotalFats.push_back(TotalFats.back() + Item.Fats);
+            TotalCarbohydrates.push_back(TotalCarbohydrates.back() + Item.Carbohydrates * Item.Weight / 100.f);
+            TotalProteins.push_back(TotalProteins.back() + Item.Proteins * Item.Weight / 100.f);
+            TotalFats.push_back(TotalFats.back() + Item.Fats * Item.Weight / 100.f);
         }
         else
         {
             TotalPrice.push_back(Item.Price);
             TotalCalories.push_back(Item.TotalCalories);
-            TotalCarbohydrates.push_back(Item.Carbohydrates);
-            TotalProteins.push_back(Item.Proteins);
-            TotalFats.push_back(Item.Fats);
+            TotalCarbohydrates.push_back(Item.Carbohydrates * Item.Weight / 100.f);
+            TotalProteins.push_back(Item.Proteins * Item.Weight / 100.f);
+            TotalFats.push_back(Item.Fats * Item.Weight / 100.f);
         }
         Meals.push_back(Item);
         return *this;
@@ -132,7 +139,7 @@ struct DailyRation
         return *this;
     }
 
-    int GetMaxCategory()
+    int GetMaxCategory() const
     {
         int Max = 0;
         for (auto& Category : Categories)
@@ -154,29 +161,6 @@ struct DailyRation
         return 0.f;
     }
 
-    void Print() const
-    {
-        for (std::size_t i = 0; i < Meals.size(); ++i)
-        {
-            std::cout << "    " << i << ": " << Meals[i].Name << " " << Meals[i].AdditionalName << " : " << Meals[i].Id << std::endl;
-        }
-        std::cout << "    Total calories: " << TotalCalories.back() << std::endl;
-        std::cout << "    Total price: " << TotalPrice.back() << std::endl;
-        std::cout << "    Factor: " << GetFactor() << std::endl;
-    }
-
-    std::ostream& operator<<(std::ostream &out)
-    {
-        for (std::size_t i = 0; i < Meals.size(); ++i)
-        {
-            out << "    " << i << ": " << Meals[i].Name << " " << Meals[i].AdditionalName << " : " << Meals[i].Id << std::endl;
-        }
-        out << "    Total calories: " << TotalCalories.back() << std::endl;
-        out << "    Total price: " << TotalPrice.back() << std::endl;
-        out << "    Factor: " << GetFactor() << std::endl;
-        return out;
-    }
-
     bool operator==(const DailyRation& Other) const
     {
         std::map<std::uint32_t, int> MealMap;
@@ -196,15 +180,6 @@ struct DailyRation
         return true;
     }
 
-    static bool CompareByTotalCalories(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalCalories.back() > Var2.TotalCalories.back();}
-    static bool CompareByCarbohydrates(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalCarbohydrates.back() > Var2.TotalCarbohydrates.back();}
-    static bool CompareByProteins(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalProteins.back() > Var2.TotalProteins.back();}
-    static bool CompareByFats(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalFats.back() > Var2.TotalFats.back();}
-    static bool CompareByPrice(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalPrice.back() > Var2.TotalPrice.back();}
-    static bool CompareByFactor(const DailyRation& Var1, const DailyRation& Var2) {return Var1.GetFactor() > Var2.GetFactor();}
-
-    auto Size() {return Meals.size();} const
-
     auto TotalOfCategory(const std::string& Category) const
     {
         if (Categories.find(Category) != Categories.end()) {
@@ -213,7 +188,31 @@ struct DailyRation
         return 0;
     }
 
+    static bool CompareByTotalCalories(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalCalories.back() > Var2.TotalCalories.back();}
+    static bool CompareByCarbohydrates(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalCarbohydrates.back() > Var2.TotalCarbohydrates.back();}
+    static bool CompareByProteins(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalProteins.back() > Var2.TotalProteins.back();}
+    static bool CompareByFats(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalFats.back() > Var2.TotalFats.back();}
+    static bool CompareByPrice(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalPrice.back() > Var2.TotalPrice.back();}
+    static bool CompareByFactor(const DailyRation& Var1, const DailyRation& Var2) {return Var1.GetFactor() > Var2.GetFactor();}
+
+    inline auto Size() const {return Meals.size();}
+    inline auto operator[](std::size_t Index) const
+    {
+        return Meals[Index];
+    }
+
 };
+
+std::ostream& operator<<(std::ostream &out, const DailyRation& Ration)
+{
+    for (std::size_t i = 0; i < Ration.Size(); ++i)
+    {
+        out << " " << i+1 << ": " << Ration[i].Name << " " << Ration[i].AdditionalName << std::endl;
+    }
+    out << " P/F/C: " << std::setprecision(3) << Ration.GetTotalProteins() << "/" << Ration.GetTotalFats() << "/" << Ration.GetTotalCarbohydrates() << " ";
+    out << " kcal/$=Factor: " << std::setprecision(4) << Ration.TotalCalories.back() << "/" << Ration.TotalPrice.back() << "=" << Ration.GetFactor() << std::endl;
+    return out;
+}
 
 void RecursiveComposition(std::vector<DailyRation>& DailyRations, const std::vector<MenuItem>& Menu, size_t StartingIndex, DailyRation &Ration)
 {
@@ -258,7 +257,7 @@ void RecursiveComposition(std::vector<DailyRation>& DailyRations, const std::vec
         if (Ration.TotalCalories.back() > Options::MinimumMealCalories)
         {
             // If meal's factor fits then we save it
-            if (Ration.GetFactor() > Options::Factor && Ration.Size() >= Options::MinMealsPerDay)
+            if (Ration.GetTotalPrice() <= Options::MaxDailyPrice && Ration.Size() >= Options::MinMealsPerDay)
             {
                 DailyRations.push_back(Ration);
             }
@@ -358,7 +357,6 @@ void LoadOptions(const json& Json)
         }
         Options::Limitations.push_back({CategoryLimitation, Value});
     }
-    Options::Factor = Options::MinimumMealCalories / Options::MaxDailyPrice;
 }
 
 int main(int argc, char* argv[])
@@ -461,17 +459,6 @@ int main(int argc, char* argv[])
         }
     }
 
-    if (false)
-    {
-        // Sort by some parameter and print data
-        std::sort(Menu.begin(), Menu.end(), MenuItem::CompareByCarbohydrates);
-        for (auto& Item : Menu)
-        {
-            std::cout << Item.Carbohydrates << ": " << Item.Name << " " << Item.AdditionalName << std::endl;
-        }
-        return 0;
-    }
-
     std::cout<< "Menu enlists " << Menu.size() << " positions." << std::endl;
 
     std::vector<DailyRation> Solutions;
@@ -482,7 +469,7 @@ int main(int argc, char* argv[])
     std::cout<<"Recursive time: " << std::chrono::duration<float>(End-Start).count() << std::endl;
 
     std::cout << "Total of " << Solutions.size() << " daily rations found." << std::endl;
-    std::map<int, std::size_t> Dispersion;
+    std::map<std::size_t, std::size_t> Dispersion;
     for(auto& Solution : Solutions)
     {
         ++Dispersion[Solution.Size()];
@@ -502,18 +489,8 @@ int main(int argc, char* argv[])
     }
     for (int i = 0; i < WeeklyRation.size(); ++i)
     {
-        float DailyCalories = 0.f;
-        float DailyPrice = 0.f;
         OutputFile << "Day " << i+1 << std::endl;
-        for (int j = 0; j < WeeklyRation[i].Size(); ++j)
-        {
-            OutputFile << j+1 << ": " << WeeklyRation[i].Meals[j].Name << " " << WeeklyRation[i].Meals[j].AdditionalName << std::endl;
-            DailyCalories += WeeklyRation[i].Meals[j].TotalCalories;
-            DailyPrice += WeeklyRation[i].Meals[j].Price;
-        }
-        OutputFile << "Total daily calories:" << DailyCalories << std::endl;
-        OutputFile << "Total price: " << DailyPrice << std::endl;
-        OutputFile << "Factor: " << DailyCalories / DailyPrice << std::endl << std::endl;
+        OutputFile << WeeklyRation[i] << std::endl;
     }
     OutputFile.close();
 
