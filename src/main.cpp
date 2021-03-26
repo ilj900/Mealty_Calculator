@@ -11,7 +11,7 @@
 
 using json = nlohmann::json;
 
-struct FOptions
+namespace Options
 {
     float MaximumMealCalories = 2000.f;
     float MinimumMealCalories = 1900.f;
@@ -25,12 +25,17 @@ struct FOptions
                                            "оливье", "Пирожки", "пирожки", "Торт", "торт", "Напиток", "напиток", "Сэндвич",
                                            "сэндвич", "Бургер", "бургер", "Капрезе", "капрезе", "Кус-кус", "кус-кус",
                                            "Булгур", "булгур", "Кекс", "кекс", "Фондан", "фондан"};
+    std::vector<std::string> Required = {"Лазанья"};
     std::vector<std::pair<std::vector<std::string>, int>> Limitations = {{{"drink", "bread", "snack"}, 1},
                                                                          {{"salad"}, 2},
                                                                          {{"breakfast"}, 2},
                                                                          {{"main_dish"}, 2},
                                                                          {{"soup"}, 2}, };
     int MaxMealRepeat = 1;
+
+    const float ProteinCalories = 4.1f;
+    const float FatsCalories = 9.1f;
+    const float CarbohydratesCalories = 4.1f;
 };
 
 struct MenuItem
@@ -210,7 +215,7 @@ struct DailyRation
 
 };
 
-void RecursiveComposition(std::vector<DailyRation>& DailyRations, const std::vector<MenuItem>& Menu, size_t StartingIndex, DailyRation &Ration, const FOptions& Options)
+void RecursiveComposition(std::vector<DailyRation>& DailyRations, const std::vector<MenuItem>& Menu, size_t StartingIndex, DailyRation &Ration)
 {
     for (std::size_t i = StartingIndex; i < Menu.size(); ++i)
     {
@@ -218,15 +223,15 @@ void RecursiveComposition(std::vector<DailyRation>& DailyRations, const std::vec
 
         // If DailyRation has more calories than we need
         // Or if DailyRation has more dishes than needed
-        if ((Ration.TotalCalories.back() > Options.MaximumMealCalories) ||
-        (Ration.Size() >= Options.MaxMealsPerDay))
+        if ((Ration.TotalCalories.back() > Options::MaximumMealCalories) ||
+        (Ration.Size() >= Options::MaxMealsPerDay))
         {
             Ration.Pop();
             continue;
         }
 
         bool Found = false;
-        for (auto& Limitation : Options.Limitations)
+        for (auto& Limitation : Options::Limitations)
         {
             int Count = 0;
             for (auto& Category : Limitation.first)
@@ -250,10 +255,10 @@ void RecursiveComposition(std::vector<DailyRation>& DailyRations, const std::vec
         }
 
         // If Meal has more calories than minimum that we need to check it
-        if (Ration.TotalCalories.back() > Options.MinimumMealCalories)
+        if (Ration.TotalCalories.back() > Options::MinimumMealCalories)
         {
             // If meal's factor fits then we save it
-            if (Ration.GetFactor() > Options.Factor && Ration.Size() >= Options.MinMealsPerDay)
+            if (Ration.GetFactor() > Options::Factor && Ration.Size() >= Options::MinMealsPerDay)
             {
                 DailyRations.push_back(Ration);
             }
@@ -261,7 +266,7 @@ void RecursiveComposition(std::vector<DailyRation>& DailyRations, const std::vec
             continue;
         }
 
-        RecursiveComposition(DailyRations, Menu, i + 1, Ration, Options);
+        RecursiveComposition(DailyRations, Menu, i + 1, Ration);
 
         Ration.Pop();
     }
@@ -326,21 +331,23 @@ void from_json(const json& Json, MenuItem& Item)
     Json.at("available").get_to(Item.Available);
 }
 
-void from_json(const json& Json, FOptions& Options)
+void LoadOptions(const json& Json)
 {
-    Json.at("MaxCalories").get_to(Options.MaximumMealCalories);
-    Json.at("MinCalories").get_to(Options.MinimumMealCalories);
-    Json.at("Days").get_to(Options.Days);
-    Json.at("MinMealsPerDay").get_to(Options.MinMealsPerDay);
-    Json.at("MaxMealsPerDay").get_to(Options.MaxMealsPerDay);
-    Json.at("MaxDailyPrice").get_to(Options.MaxDailyPrice);
-    Json.at("MaxMealRepeat").get_to(Options.MaxMealRepeat);
-    Options.Categories.resize(0);
-    Json.at("Categories").get_to(Options.Categories);\
-    Options.Exceptions.resize(0);
-    Json.at("Exceptions").get_to(Options.Exceptions);
+    Json.at("MaxCalories").get_to(Options::MaximumMealCalories);
+    Json.at("MinCalories").get_to(Options::MinimumMealCalories);
+    Json.at("Days").get_to(Options::Days);
+    Json.at("MinMealsPerDay").get_to(Options::MinMealsPerDay);
+    Json.at("MaxMealsPerDay").get_to(Options::MaxMealsPerDay);
+    Json.at("MaxDailyPrice").get_to(Options::MaxDailyPrice);
+    Json.at("MaxMealRepeat").get_to(Options::MaxMealRepeat);
+    Options::Categories.resize(0);
+    Json.at("Categories").get_to(Options::Categories);
+    Options::Exceptions.resize(0);
+    Json.at("Exceptions").get_to(Options::Exceptions);
+    Options::Required.resize(0);
+    Json.at("Required").get_to(Options::Required);
     json Limitations = Json.at("Limitations");
-    Options.Limitations.resize(0);
+    Options::Limitations.resize(0);
     for (auto& Limitation : Limitations)
     {
         std::vector<std::string> CategoryLimitation;
@@ -349,9 +356,9 @@ void from_json(const json& Json, FOptions& Options)
         {
             CategoryLimitation.push_back(Str.get<std::string>());
         }
-        Options.Limitations.push_back({CategoryLimitation, Value});
+        Options::Limitations.push_back({CategoryLimitation, Value});
     }
-    Options.Factor = Options.MinimumMealCalories / Options.MaxDailyPrice;
+    Options::Factor = Options::MinimumMealCalories / Options::MaxDailyPrice;
 }
 
 int main(int argc, char* argv[])
@@ -378,10 +385,10 @@ int main(int argc, char* argv[])
         return -1;
     json JsonOptions;
     OptionsFile >> JsonOptions;
-    FOptions Options = JsonOptions["Options"];
+    LoadOptions(JsonOptions["Options"]);
 
     // Filter Menu
-    Menu.erase(std::remove_if(Menu.begin(), Menu.end(), [&Options](const MenuItem& Item)
+    Menu.erase(std::remove_if(Menu.begin(), Menu.end(), [](const MenuItem& Item)
     {
         // It that lambda returns true then item will be removed
         // If Item is not available
@@ -391,14 +398,14 @@ int main(int argc, char* argv[])
         }
 
         // If it and exception
-        for (auto& Exception : Options.Exceptions)
+        for (auto& Exception : Options::Exceptions)
         {
             if (Item.Name.find(Exception) != std::string::npos || Item.AdditionalName.find(Exception) != std::string::npos)
                 return true;
         }
 
         // If Item is from category we don't need
-        for (auto& Category :Options.Categories)
+        for (auto& Category :Options::Categories)
         {
             if (Category == Item.Category)
             {
@@ -411,7 +418,7 @@ int main(int argc, char* argv[])
 
     // Sort the menu by category, taking into account Limitations. This should speed up recursive generation process.
     std::size_t p = 0;
-    for (auto& Limitation : Options.Limitations)
+    for (auto& Limitation : Options::Limitations)
     {
         std::size_t l = p;
         std::size_t r = Menu.size() - 1;
@@ -470,7 +477,7 @@ int main(int argc, char* argv[])
     std::vector<DailyRation> Solutions;
     DailyRation Ration;
     auto Start = std::chrono::steady_clock::now();
-    RecursiveComposition(Solutions, Menu, 0, Ration, Options);
+    RecursiveComposition(Solutions, Menu, 0, Ration);
     auto End = std::chrono::steady_clock::now();
     std::cout<<"Recursive time: " << std::chrono::duration<float>(End-Start).count() << std::endl;
 
