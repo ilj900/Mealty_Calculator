@@ -196,7 +196,7 @@ struct DailyRation
     static bool CompareByFactor(const DailyRation& Var1, const DailyRation& Var2) {return Var1.GetFactor() > Var2.GetFactor();}
 
     inline auto Size() const {return Meals.size();}
-    inline auto operator[](std::size_t Index) const
+    MenuItem& operator[](std::size_t Index)
     {
         return Meals[Index];
     }
@@ -221,13 +221,17 @@ struct RationsStorage
 
     auto Size() const {return Storage.size();}
 
-    DailyRation operator[](std::size_t Index) const
+    auto begin() const {return Storage.begin();}
+    auto end() const {return Storage.end();}
+    auto back() const {return Storage.back();}
+
+    DailyRation& operator[](std::size_t Index)
     {
         return Storage[Index];
     }
 };
 
-std::ostream& operator<<(std::ostream &out, const DailyRation& Ration)
+std::ostream& operator<<(std::ostream &out, DailyRation& Ration)
 {
     for (std::size_t i = 0; i < Ration.Size(); ++i)
     {
@@ -325,7 +329,7 @@ std::vector<DailyRation> GenerateWeeklyRation(RationsStorage& Storage)
                             // TODO
                             throw std::runtime_error("Out of solutions!");
                         }
-                        Storage.Storage[i] = Storage.Storage.back();
+                        Storage[i] = Storage.back();
                         Storage.Pop();
                         --i;
                         break;
@@ -494,7 +498,7 @@ int main(int argc, char* argv[])
 
     std::cout << "Total of " << Solutions.Size() << " daily rations found." << std::endl;
     std::map<std::size_t, std::size_t> Dispersion;
-    for(auto& Solution : Solutions.Storage)
+    for(auto& Solution : Solutions)
     {
         ++Dispersion[Solution.Size()];
     }
