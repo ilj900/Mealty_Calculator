@@ -203,6 +203,30 @@ struct DailyRation
 
 };
 
+struct RationsStorage
+{
+    std::vector<DailyRation> Storage;
+
+    RationsStorage& Push(const DailyRation& Ration)
+    {
+        Storage.push_back(Ration);
+        return *this;
+    }
+
+    RationsStorage& Pop()
+    {
+        Storage.pop_back();
+        return *this;
+    }
+
+    auto Size() const {return Storage.size();}
+
+    DailyRation operator[](std::size_t Index) const
+    {
+        return Storage[Index];
+    }
+};
+
 std::ostream& operator<<(std::ostream &out, const DailyRation& Ration)
 {
     for (std::size_t i = 0; i < Ration.Size(); ++i)
@@ -214,7 +238,7 @@ std::ostream& operator<<(std::ostream &out, const DailyRation& Ration)
     return out;
 }
 
-void RecursiveComposition(std::vector<DailyRation>& DailyRations, const std::vector<MenuItem>& Menu, size_t StartingIndex, DailyRation &Ration)
+void RecursiveComposition(RationsStorage& Storage, const std::vector<MenuItem>& Menu, size_t StartingIndex, DailyRation &Ration)
 {
     for (std::size_t i = StartingIndex; i < Menu.size(); ++i)
     {
@@ -259,13 +283,13 @@ void RecursiveComposition(std::vector<DailyRation>& DailyRations, const std::vec
             // If meal's factor fits then we save it
             if (Ration.GetTotalPrice() <= Options::MaxDailyPrice && Ration.Size() >= Options::MinMealsPerDay)
             {
-                DailyRations.push_back(Ration);
+                Storage.Push(Ration);
             }
             Ration.Pop();
             continue;
         }
 
-        RecursiveComposition(DailyRations, Menu, i + 1, Ration);
+        RecursiveComposition(Storage, Menu, i + 1, Ration);
 
         Ration.Pop();
     }
@@ -273,7 +297,7 @@ void RecursiveComposition(std::vector<DailyRation>& DailyRations, const std::vec
     return;
 }
 
-std::vector<DailyRation> GenerateWeeklyRation(std::vector<DailyRation>& Solutions)
+std::vector<DailyRation> GenerateWeeklyRation(RationsStorage& Storage)
 {
     std::vector<DailyRation> WeeklyRation;
 
@@ -281,28 +305,28 @@ std::vector<DailyRation> GenerateWeeklyRation(std::vector<DailyRation>& Solution
     {
         std::random_device RandomDevice;
         std::mt19937 Generator{RandomDevice()};
-        std::uniform_int_distribution<int> Distribution(0,int(Solutions.size() - 1));
+        std::uniform_int_distribution<int> Distribution(0,int(Storage.Size() - 1));
         auto RandomDailyMeal = std::bind(Distribution, Generator);
 
         int Index = RandomDailyMeal();
-        auto DailyRation = Solutions[Index];
+        auto DailyRation = Storage[Index];
         WeeklyRation.push_back(DailyRation);
 
         for (auto Meal : DailyRation.Meals)
         {
-            for(int i = 0; i < Solutions.size(); ++i)
+            for(int i = 0; i < Storage.Size(); ++i)
             {
-                for (auto Single : Solutions[i].Meals)
+                for (auto Single : Storage[i].Meals)
                 {
                     if (Single == Meal)
                     {
-                        if (Solutions.size() == 0)
+                        if (Storage.Size() == 0)
                         {
                             // TODO
                             throw std::runtime_error("Out of solutions!");
                         }
-                        Solutions[i] = Solutions.back();
-                        Solutions.pop_back();
+                        Storage.Storage[i] = Storage.Storage.back();
+                        Storage.Pop();
                         --i;
                         break;
                     }
@@ -461,16 +485,16 @@ int main(int argc, char* argv[])
 
     std::cout<< "Menu enlists " << Menu.size() << " positions." << std::endl;
 
-    std::vector<DailyRation> Solutions;
+    RationsStorage Solutions;
     DailyRation Ration;
     auto Start = std::chrono::steady_clock::now();
     RecursiveComposition(Solutions, Menu, 0, Ration);
     auto End = std::chrono::steady_clock::now();
     std::cout<<"Recursive time: " << std::chrono::duration<float>(End-Start).count() << std::endl;
 
-    std::cout << "Total of " << Solutions.size() << " daily rations found." << std::endl;
+    std::cout << "Total of " << Solutions.Size() << " daily rations found." << std::endl;
     std::map<std::size_t, std::size_t> Dispersion;
-    for(auto& Solution : Solutions)
+    for(auto& Solution : Solutions.Storage)
     {
         ++Dispersion[Solution.Size()];
     }
