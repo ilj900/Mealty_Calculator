@@ -20,18 +20,10 @@ namespace Options
     float MaxDailyPrice = 550.f;
     int MinMealsPerDay = 4;
     int MaxMealsPerDay = 5;
-    float Factor = MinimumMealCalories / MaxDailyPrice;
-    std::vector<std::string> Categories = {"breakfast", "salad", "soup", "main_dish", "drink", "bread", "snack"};
-    std::vector<std::string> Exceptions = {"Хлеб", "хлеб", "Булочка", "булочка", "Тартин", "тартин", "Оливье",
-                                           "оливье", "Пирожки", "пирожки", "Торт", "торт", "Напиток", "напиток", "Сэндвич",
-                                           "сэндвич", "Бургер", "бургер", "Капрезе", "капрезе", "Кус-кус", "кус-кус",
-                                           "Булгур", "булгур", "Кекс", "кекс", "Фондан", "фондан"};
-    std::vector<std::string> Required = {"Лазанья"};
-    std::vector<std::pair<std::vector<std::string>, int>> Limitations = {{{"drink", "bread", "snack"}, 1},
-                                                                         {{"salad"}, 2},
-                                                                         {{"breakfast"}, 2},
-                                                                         {{"main_dish"}, 2},
-                                                                         {{"soup"}, 2}, };
+    std::vector<std::string> Categories;
+    std::vector<std::string> Exceptions;
+    std::vector<std::string> Required;
+    std::vector<std::pair<std::vector<std::string>, int>> Limitations;
     int MaxMealRepeat = 1;
 
     const float ProteinCalories = 4.1f;
@@ -80,6 +72,52 @@ struct FMenuItem
 {
 public:
     FMenuItem(): Id(Counter++) {};
+
+    static unsigned int Counter;
+
+    bool operator==(const FMenuItem& Other) {return Other.Id == Id;}
+    static bool CompareByWeight(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.Weight > Var2.Weight;}
+    static bool CompareByCaloriesPer100(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.CaloriesPer100 > Var2.CaloriesPer100;}
+    static bool CompareByTotalCalories(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.TotalCalories > Var2.TotalCalories;}
+    static bool CompareByCarbohydrates(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.Carbohydrates > Var2.Carbohydrates;}
+    static bool CompareByProteins(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.Proteins > Var2.Proteins;}
+    static bool CompareByFats(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.Fats > Var2.Fats;}
+    static bool CompareByPrice(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.Price > Var2.Price;}
+    static bool CompareByFactor(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.Factor > Var2.Factor;}
+
+    inline bool Find(const std::string& Word) const
+    {
+        if (Name.find(Word) != std::string::npos || AdditionalName.find(Word) != std::string::npos)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    inline bool FindAny(const std::vector<std::string>& Words) const
+    {
+        for (auto& Word : Words)
+        {
+            if (Find(Word))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    inline bool FindAll(const std::vector<std::string>& Words) const
+    {
+        for (auto& Word : Words)
+        {
+            if (!Find(Word))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     unsigned int Id;
     std::string Name = "";
     std::string AdditionalName = "";
@@ -93,18 +131,6 @@ public:
     float Price = 0.f;
     float Factor = 0.f;
     bool Available = false;
-
-    static unsigned int Counter;
-
-    bool operator==(const FMenuItem& Other) {return Other.Id == Id;}
-    static bool CompareByWeight(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.Weight > Var2.Weight;}
-    static bool CompareByCaloriesPer100(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.CaloriesPer100 > Var2.CaloriesPer100;}
-    static bool CompareByTotalCalories(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.TotalCalories > Var2.TotalCalories;}
-    static bool CompareByCarbohydrates(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.Carbohydrates > Var2.Carbohydrates;}
-    static bool CompareByProteins(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.Proteins > Var2.Proteins;}
-    static bool CompareByFats(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.Fats > Var2.Fats;}
-    static bool CompareByPrice(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.Price > Var2.Price;}
-    static bool CompareByFactor(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.Factor > Var2.Factor;}
 };
 
 unsigned int FMenuItem::Counter = 0u;
@@ -319,6 +345,52 @@ struct FDailyRation
         return Meals[Index];
     }
 
+    inline bool Find(const std::string& Word) const
+    {
+        for(auto& MenuItem : Meals)
+        {
+            if (MenuItem.Find(Word))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    inline bool FindAny(const std::vector<std::string>& Words) const
+    {
+        for(auto& MenuItem : Meals)
+        {
+            if (MenuItem.FindAny(Words))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    inline bool FindAll(const std::vector<std::string>& Words) const
+    {
+        for (auto& Word : Words)
+        {
+            bool found = false;
+            for (auto& MenuItem : Meals)
+            {
+                if (MenuItem.Find(Word))
+                {
+                    found = true;
+                    break;
+                }
+            }
+            if (found)
+            {
+                continue;
+            }
+            return false;
+        }
+        return true;
+    }
+
     std::vector<FMenuItem> Meals;
     std::map<std::string, int> Categories;
     // We store prices in vector, because too many additions and subtractions will add error to the value
@@ -370,8 +442,6 @@ void from_json(const json& Json, FDailyRation& DailyRation)
 
 struct RationsStorage
 {
-    std::vector<FDailyRation> Storage;
-
     RationsStorage& Push(const FDailyRation& DailyRation)
     {
         Storage.push_back(DailyRation);
@@ -437,6 +507,53 @@ struct RationsStorage
         StorageFile.close();
         return Storage;
     }
+
+    inline bool Find(const std::string& Word) const
+    {
+        for (auto& Daily : Storage)
+        {
+            if (Daily.Find(Word))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    inline bool FindAny(const std::vector<std::string>& Words) const
+    {
+        for(auto& Ration : Storage)
+        {
+            if (Ration.FindAny(Words))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    inline bool FindAll(const std::vector<std::string>& Words) const
+    {
+        for(auto& Word : Words)
+        {
+            bool Found = false;
+            for (auto& Ration : Storage)
+            {
+                if (Ration.Find(Word))
+                {
+                    Found = true;
+                    break;
+                }
+            }
+            if (!Found)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    std::vector<FDailyRation> Storage;
 };
 
 std::ostream& operator<<(std::ostream &out, FDailyRation& DailyRation)
@@ -511,8 +628,6 @@ void RecursiveComposition(RationsStorage& Storage, FMenu& Menu, size_t StartingI
 
 RationsStorage GenerateWeeklyRation(RationsStorage& Storage)
 {
-    RationsStorage WeeklyRation;
-
     for (int day = 0; day < 5; ++day)
     {
         std::random_device RandomDevice;
