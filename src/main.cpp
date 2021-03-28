@@ -166,7 +166,6 @@ struct FMenu
 
     int SaveMenuToFile(const std::string& Path)
     {
-        // Fill in the structure
         json JsonMenu = json::array();
         for (auto& Item : Data)
         {
@@ -209,11 +208,11 @@ struct FMenu
     }
 };
 
-struct DailyRation
+struct FDailyRation
 {
-    DailyRation() {}
+    FDailyRation() {}
 
-    DailyRation(const std::vector<FMenuItem>& MenuItems)
+    FDailyRation(const std::vector<FMenuItem>& MenuItems)
     {
         for (auto& MenuItem : MenuItems)
         {
@@ -227,7 +226,7 @@ struct DailyRation
     float GetTotalProteins() const {return TotalProteins.back();}
     float GetTotalFats() const {return TotalFats.back();}
 
-    DailyRation& Push(const FMenuItem& MenuItem)
+    FDailyRation& Push(const FMenuItem& MenuItem)
     {
         ++Categories[MenuItem.Category];
         if (Meals.size() > 0)
@@ -250,7 +249,7 @@ struct DailyRation
         return *this;
     }
 
-    DailyRation& Pop()
+    FDailyRation& Pop()
     {
         if (Meals.size() == 0)
         {
@@ -288,7 +287,7 @@ struct DailyRation
 
     // Two rations are equal if they have the same meals.
     // Order doesn't matter in that case
-    bool operator==(const DailyRation& Other) const
+    bool operator==(const FDailyRation& Other) const
     {
         std::map<std::uint32_t, int> MealMap;
         for (auto& Meal : Meals)
@@ -307,12 +306,12 @@ struct DailyRation
         return true;
     }
 
-    static bool CompareByTotalCalories(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalCalories.back() > Var2.TotalCalories.back();}
-    static bool CompareByCarbohydrates(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalCarbohydrates.back() > Var2.TotalCarbohydrates.back();}
-    static bool CompareByProteins(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalProteins.back() > Var2.TotalProteins.back();}
-    static bool CompareByFats(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalFats.back() > Var2.TotalFats.back();}
-    static bool CompareByPrice(const DailyRation& Var1, const DailyRation& Var2) {return Var1.TotalPrice.back() > Var2.TotalPrice.back();}
-    static bool CompareByFactor(const DailyRation& Var1, const DailyRation& Var2) {return Var1.GetFactor() > Var2.GetFactor();}
+    static bool CompareByTotalCalories(const FDailyRation& Var1, const FDailyRation& Var2) {return Var1.TotalCalories.back() > Var2.TotalCalories.back();}
+    static bool CompareByCarbohydrates(const FDailyRation& Var1, const FDailyRation& Var2) {return Var1.TotalCarbohydrates.back() > Var2.TotalCarbohydrates.back();}
+    static bool CompareByProteins(const FDailyRation& Var1, const FDailyRation& Var2) {return Var1.TotalProteins.back() > Var2.TotalProteins.back();}
+    static bool CompareByFats(const FDailyRation& Var1, const FDailyRation& Var2) {return Var1.TotalFats.back() > Var2.TotalFats.back();}
+    static bool CompareByPrice(const FDailyRation& Var1, const FDailyRation& Var2) {return Var1.TotalPrice.back() > Var2.TotalPrice.back();}
+    static bool CompareByFactor(const FDailyRation& Var1, const FDailyRation& Var2) {return Var1.GetFactor() > Var2.GetFactor();}
 
     inline auto Size() const {return Meals.size();}
     inline FMenuItem& operator[](std::size_t Index)
@@ -330,18 +329,52 @@ struct DailyRation
     std::vector<float> TotalFats;
 };
 
-void from_json(const json& Json, DailyRation& Item)
+void to_json(json& Json, const FDailyRation& DailyRation)
 {
 
+    Json["Meals"] = json::array();
+    Json["Categories"] = json::array();
+    Json["TotalPrice"] = json::array();
+    Json["TotalCalories"] = json::array();
+    Json["TotalCarbohydrates"] = json::array();
+    Json["TotalProteins"] = json::array();
+    Json["TotalFats"] = json::array();
+    for (std::size_t Day = 0; Day < DailyRation.Size(); ++Day)
+    {
+        Json["Meals"].push_back(DailyRation.Meals[Day]);
+        Json["TotalPrice"].push_back(DailyRation.TotalPrice[Day]);
+        Json["TotalCalories"].push_back(DailyRation.TotalCalories[Day]);
+        Json["TotalCarbohydrates"].push_back(DailyRation.TotalCarbohydrates[Day]);
+        Json["TotalProteins"].push_back(DailyRation.TotalProteins[Day]);
+        Json["TotalFats"].push_back(DailyRation.TotalFats[Day]);
+    }
+    Json["Categories"] = DailyRation.Categories;
+}
+
+void from_json(const json& Json, FDailyRation& DailyRation)
+{
+    json J = Json["Meals"];
+    DailyRation.Meals.resize(J.size());
+    for(std::size_t i = 0; i < J.size(); ++i)
+    {
+        J.at(i).get_to(DailyRation.Meals[i]);
+    }
+    Json.at("Meals").get_to(DailyRation.Meals);
+    Json.at("TotalPrice").get_to(DailyRation.TotalPrice);
+    Json.at("TotalCalories").get_to(DailyRation.TotalCalories);
+    Json.at("TotalCarbohydrates").get_to(DailyRation.TotalCarbohydrates);
+    Json.at("TotalProteins").get_to(DailyRation.TotalProteins);
+    Json.at("TotalFats").get_to(DailyRation.TotalFats);
+    DailyRation.Categories = Json.at("Categories").get<std::map<std::string, int>>();
 }
 
 struct RationsStorage
 {
-    std::vector<DailyRation> Storage;
+    std::vector<FDailyRation> Storage;
 
-    RationsStorage& Push(const DailyRation& Ration)
+    RationsStorage& Push(const FDailyRation& DailyRation)
     {
-        Storage.push_back(Ration);
+        Storage.push_back(DailyRation);
         return *this;
     }
 
@@ -357,24 +390,67 @@ struct RationsStorage
     auto end() const {return Storage.end();}
     auto back() const {return Storage.back();}
 
-    DailyRation& operator[](std::size_t Index)
+    FDailyRation& operator[](std::size_t Index)
     {
         return Storage[Index];
     }
+
+    int ToFile(const std::string& Path)
+    {
+        json J = json::array();
+        for (auto& DailyRation : Storage)
+        {
+            J.push_back(DailyRation);
+        }
+        json JsonFile;
+        JsonFile["Storage"] = J;
+
+        // Write down the data
+        std::ofstream OutputFile;
+        OutputFile.open(Path);
+        if (!OutputFile.is_open())
+        {
+            return -1;
+        }
+
+        OutputFile << std::setprecision(2) << JsonFile.dump(2)<< std::endl;
+
+        OutputFile.close();
+        return 0;
+    }
+
+    static RationsStorage LoadFromFile(const std::string& Path)
+    {
+        std::ifstream StorageFile(Path, std::ifstream::in);
+        if (!StorageFile.is_open())
+        {
+            throw std::runtime_error("Failed to load storage from file");
+        }
+        json JsonStorage;
+        StorageFile >> JsonStorage;
+        RationsStorage Storage;
+        for (auto JsonDailyRation : JsonStorage["Storage"])
+        {
+            FDailyRation MenuItem = JsonDailyRation.get<FDailyRation>();
+            Storage.Push(MenuItem);
+        }
+        StorageFile.close();
+        return Storage;
+    }
 };
 
-std::ostream& operator<<(std::ostream &out, DailyRation& Ration)
+std::ostream& operator<<(std::ostream &out, FDailyRation& DailyRation)
 {
-    for (std::size_t i = 0; i < Ration.Size(); ++i)
+    for (std::size_t i = 0; i < DailyRation.Size(); ++i)
     {
-        out << " " << i+1 << ": " << Ration[i].Name << " " << Ration[i].AdditionalName << std::endl;
+        out << " " << i+1 << ": " << DailyRation[i].Name << " " << DailyRation[i].AdditionalName << std::endl;
     }
-    out << " P/F/C: " << std::setprecision(3) << Ration.GetTotalProteins() << "/" << Ration.GetTotalFats() << "/" << Ration.GetTotalCarbohydrates() << " ";
-    out << " kcal/$=Factor: " << std::setprecision(4) << Ration.TotalCalories.back() << "/" << Ration.TotalPrice.back() << "=" << Ration.GetFactor() << std::endl;
+    out << " P/F/C: " << std::setprecision(3) << DailyRation.GetTotalProteins() << "/" << DailyRation.GetTotalFats() << "/" << DailyRation.GetTotalCarbohydrates() << " ";
+    out << " kcal/$=Factor: " << std::setprecision(4) << DailyRation.TotalCalories.back() << "/" << DailyRation.TotalPrice.back() << "=" << DailyRation.GetFactor() << std::endl;
     return out;
 }
 
-void RecursiveComposition(RationsStorage& Storage, FMenu& Menu, size_t StartingIndex, DailyRation &Ration)
+void RecursiveComposition(RationsStorage& Storage, FMenu& Menu, size_t StartingIndex, FDailyRation &Ration)
 {
     for (std::size_t i = StartingIndex; i < Menu.Size(); ++i)
     {
@@ -433,9 +509,9 @@ void RecursiveComposition(RationsStorage& Storage, FMenu& Menu, size_t StartingI
     return;
 }
 
-std::vector<DailyRation> GenerateWeeklyRation(RationsStorage& Storage)
+std::vector<FDailyRation> GenerateWeeklyRation(RationsStorage& Storage)
 {
-    std::vector<DailyRation> WeeklyRation;
+    std::vector<FDailyRation> WeeklyRation;
 
     for (int day = 0; day < 5; ++day)
     {
@@ -559,9 +635,9 @@ int main(int argc, char* argv[])
     std::cout<< "Menu enlists " << Menu.Size() << " positions." << std::endl;
 
     RationsStorage Solutions;
-    DailyRation Ration;
+    FDailyRation DailyRation;
     auto Start = std::chrono::steady_clock::now();
-    RecursiveComposition(Solutions, Menu, 0, Ration);
+    RecursiveComposition(Solutions, Menu, 0, DailyRation);
     auto End = std::chrono::steady_clock::now();
     std::cout<<"Recursive time: " << std::chrono::duration<float>(End-Start).count() << std::endl;
 
@@ -575,6 +651,8 @@ int main(int argc, char* argv[])
     {
         std::cout << Iter.first << "-meal solutions: " << Iter.second << std::endl;
     }
+
+    //RationsStorage Storage = RationsStorage::LoadFromFile("../Test1.json");
 
     auto WeeklyRation = GenerateWeeklyRation(Solutions);
 
