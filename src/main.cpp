@@ -628,6 +628,8 @@ void RecursiveComposition(RationsStorage& Storage, FMenu& Menu, size_t StartingI
 
 RationsStorage GenerateWeeklyRation(RationsStorage& Storage)
 {
+    RationsStorage WeeklyRation;
+
     for (int day = 0; day < 5; ++day)
     {
         std::random_device RandomDevice;
