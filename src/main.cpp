@@ -38,22 +38,30 @@ namespace Options
     const float FatsCalories = 9.1f;
     const float CarbohydratesCalories = 4.1f;
 
-    void LoadOptions(const json& Json)
+    void LoadOptions(const std::string& Path)
     {
-        Json.at("MaxCalories").get_to(Options::MaximumMealCalories);
-        Json.at("MinCalories").get_to(Options::MinimumMealCalories);
-        Json.at("Days").get_to(Options::Days);
-        Json.at("MinMealsPerDay").get_to(Options::MinMealsPerDay);
-        Json.at("MaxMealsPerDay").get_to(Options::MaxMealsPerDay);
-        Json.at("MaxDailyPrice").get_to(Options::MaxDailyPrice);
-        Json.at("MaxMealRepeat").get_to(Options::MaxMealRepeat);
+        // Load options
+        std::ifstream OptionsFile(Path, std::ifstream::in);
+        if (!OptionsFile.is_open())
+            throw std::runtime_error("Failed to load options from file");
+        json JsonFile;
+        OptionsFile >> JsonFile;
+        auto JsonOptions = JsonFile["Options"];
+
+        JsonOptions.at("MaxCalories").get_to(Options::MaximumMealCalories);
+        JsonOptions.at("MinCalories").get_to(Options::MinimumMealCalories);
+        JsonOptions.at("Days").get_to(Options::Days);
+        JsonOptions.at("MinMealsPerDay").get_to(Options::MinMealsPerDay);
+        JsonOptions.at("MaxMealsPerDay").get_to(Options::MaxMealsPerDay);
+        JsonOptions.at("MaxDailyPrice").get_to(Options::MaxDailyPrice);
+        JsonOptions.at("MaxMealRepeat").get_to(Options::MaxMealRepeat);
         Options::Categories.resize(0);
-        Json.at("Categories").get_to(Options::Categories);
+        JsonOptions.at("Categories").get_to(Options::Categories);
         Options::Exceptions.resize(0);
-        Json.at("Exceptions").get_to(Options::Exceptions);
+        JsonOptions.at("Exceptions").get_to(Options::Exceptions);
         Options::Required.resize(0);
-        Json.at("Required").get_to(Options::Required);
-        json Limitations = Json.at("Limitations");
+        JsonOptions.at("Required").get_to(Options::Required);
+        json Limitations = JsonOptions.at("Limitations");
         Options::Limitations.resize(0);
         for (auto& Limitation : Limitations)
         {
@@ -68,10 +76,10 @@ namespace Options
     }
 };
 
-struct MenuItem
+struct FMenuItem
 {
 public:
-    MenuItem(): Id(Counter++) {};
+    FMenuItem(): Id(Counter++) {};
     unsigned int Id;
     std::string Name = "";
     std::string AdditionalName = "";
@@ -88,59 +96,59 @@ public:
 
     static unsigned int Counter;
 
-    bool operator==(const MenuItem& Other) {return Other.Id == Id;}
-    static bool CompareByWeight(const MenuItem& Var1, const MenuItem& Var2) {return Var1.Weight > Var2.Weight;}
-    static bool CompareByCaloriesPer100(const MenuItem& Var1, const MenuItem& Var2) {return Var1.CaloriesPer100 > Var2.CaloriesPer100;}
-    static bool CompareByTotalCalories(const MenuItem& Var1, const MenuItem& Var2) {return Var1.TotalCalories > Var2.TotalCalories;}
-    static bool CompareByCarbohydrates(const MenuItem& Var1, const MenuItem& Var2) {return Var1.Carbohydrates > Var2.Carbohydrates;}
-    static bool CompareByProteins(const MenuItem& Var1, const MenuItem& Var2) {return Var1.Proteins > Var2.Proteins;}
-    static bool CompareByFats(const MenuItem& Var1, const MenuItem& Var2) {return Var1.Fats > Var2.Fats;}
-    static bool CompareByPrice(const MenuItem& Var1, const MenuItem& Var2) {return Var1.Price > Var2.Price;}
-    static bool CompareByFactor(const MenuItem& Var1, const MenuItem& Var2) {return Var1.Factor > Var2.Factor;}
+    bool operator==(const FMenuItem& Other) {return Other.Id == Id;}
+    static bool CompareByWeight(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.Weight > Var2.Weight;}
+    static bool CompareByCaloriesPer100(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.CaloriesPer100 > Var2.CaloriesPer100;}
+    static bool CompareByTotalCalories(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.TotalCalories > Var2.TotalCalories;}
+    static bool CompareByCarbohydrates(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.Carbohydrates > Var2.Carbohydrates;}
+    static bool CompareByProteins(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.Proteins > Var2.Proteins;}
+    static bool CompareByFats(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.Fats > Var2.Fats;}
+    static bool CompareByPrice(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.Price > Var2.Price;}
+    static bool CompareByFactor(const FMenuItem& Var1, const FMenuItem& Var2) {return Var1.Factor > Var2.Factor;}
 };
 
-unsigned int MenuItem::Counter = 0u;
+unsigned int FMenuItem::Counter = 0u;
 
-void from_json(const json& Json, MenuItem& Item)
+void from_json(const json& Json, FMenuItem& MenuItem)
 {
-    Json.at("name").get_to(Item.Name);
-    Json.at("additional_name").get_to(Item.AdditionalName);
-    Json.at("category").get_to(Item.Category);
-    Json.at("weight").get_to(Item.Weight);
-    Json.at("calories_per_100").get_to(Item.CaloriesPer100);
-    Json.at("total_calories").get_to(Item.TotalCalories);
-    Json.at("carbohydrates").get_to(Item.Carbohydrates);
-    Json.at("proteins").get_to(Item.Proteins);
-    Json.at("fats").get_to(Item.Fats);
-    Json.at("price").get_to(Item.Price);
-    Json.at("factor").get_to(Item.Factor);
-    Json.at("available").get_to(Item.Available);
+    Json.at("name").get_to(MenuItem.Name);
+    Json.at("additional_name").get_to(MenuItem.AdditionalName);
+    Json.at("category").get_to(MenuItem.Category);
+    Json.at("weight").get_to(MenuItem.Weight);
+    Json.at("calories_per_100").get_to(MenuItem.CaloriesPer100);
+    Json.at("total_calories").get_to(MenuItem.TotalCalories);
+    Json.at("carbohydrates").get_to(MenuItem.Carbohydrates);
+    Json.at("proteins").get_to(MenuItem.Proteins);
+    Json.at("fats").get_to(MenuItem.Fats);
+    Json.at("price").get_to(MenuItem.Price);
+    Json.at("factor").get_to(MenuItem.Factor);
+    Json.at("available").get_to(MenuItem.Available);
 }
 
-void to_json(json& Json, const MenuItem& Item)
+void to_json(json& Json, const FMenuItem& MenuItem)
 {
-    Json = json{{"name", Item.Name},
-                {"additional_name", Item.AdditionalName},
-                {"category", Item.Category},
-                {"weight", Item.Weight},
-                {"calories_per_100", Item.CaloriesPer100},
-                {"total_calories", Item.TotalCalories},
-                {"carbohydrates", Item.Carbohydrates},
-                {"proteins", Item.Proteins},
-                {"fats", Item.Fats},
-                {"price", Item.Price},
-                {"factor", Item.Factor},
-                {"available", Item.Available}
+    Json = json{{"name", MenuItem.Name},
+                {"additional_name", MenuItem.AdditionalName},
+                {"category", MenuItem.Category},
+                {"weight", MenuItem.Weight},
+                {"calories_per_100", MenuItem.CaloriesPer100},
+                {"total_calories", MenuItem.TotalCalories},
+                {"carbohydrates", MenuItem.Carbohydrates},
+                {"proteins", MenuItem.Proteins},
+                {"fats", MenuItem.Fats},
+                {"price", MenuItem.Price},
+                {"factor", MenuItem.Factor},
+                {"available", MenuItem.Available}
     };
 }
 
 struct FMenu
 {
-    std::vector<MenuItem> Data;
+    std::vector<FMenuItem> Data;
 
-    FMenu& Push(const MenuItem& Item)
+    FMenu& Push(const FMenuItem& MenuItem)
     {
-        Data.push_back(Item);
+        Data.push_back(MenuItem);
         return *this;
     }
 
@@ -151,12 +159,12 @@ struct FMenu
     }
 
     auto Size() const {return Data.size();}
-    inline MenuItem& operator[](std::size_t Index)
+    inline FMenuItem& operator[](std::size_t Index)
     {
         return Data[Index];
     }
 
-    int ToFile(const std::string& Path)
+    int SaveMenuToFile(const std::string& Path)
     {
         // Fill in the structure
         json JsonMenu = json::array();
@@ -180,17 +188,36 @@ struct FMenu
         OutputFile.close();
         return 0;
     }
+
+    static FMenu LoadMenuFromFile(const std::string& Path)
+    {
+        std::ifstream MenuFile(Path, std::ifstream::in);
+        if (!MenuFile.is_open())
+        {
+            throw std::runtime_error("Failed to load menu from file");
+        }
+        json JsonMenu;
+        MenuFile >> JsonMenu;
+        FMenu Menu;
+        for (auto JsonMenuItem : JsonMenu["Menu"])
+        {
+            FMenuItem MenuItem = JsonMenuItem.get<FMenuItem>();
+            Menu.Push(MenuItem);
+        }
+        MenuFile.close();
+        return Menu;
+    }
 };
 
 struct DailyRation
 {
     DailyRation() {}
 
-    DailyRation(const std::vector<MenuItem>& MenuItems)
+    DailyRation(const std::vector<FMenuItem>& MenuItems)
     {
-        for (auto& Item : MenuItems)
+        for (auto& MenuItem : MenuItems)
         {
-            Push(Item);
+            Push(MenuItem);
         }
     }
 
@@ -200,26 +227,26 @@ struct DailyRation
     float GetTotalProteins() const {return TotalProteins.back();}
     float GetTotalFats() const {return TotalFats.back();}
 
-    DailyRation& Push(const MenuItem& Item)
+    DailyRation& Push(const FMenuItem& MenuItem)
     {
-        ++Categories[Item.Category];
+        ++Categories[MenuItem.Category];
         if (Meals.size() > 0)
         {
-            TotalPrice.push_back(TotalPrice.back() + Item.Price);
-            TotalCalories.push_back(TotalCalories.back() + Item.TotalCalories);
-            TotalCarbohydrates.push_back(TotalCarbohydrates.back() + Item.Carbohydrates * Item.Weight / 100.f);
-            TotalProteins.push_back(TotalProteins.back() + Item.Proteins * Item.Weight / 100.f);
-            TotalFats.push_back(TotalFats.back() + Item.Fats * Item.Weight / 100.f);
+            TotalPrice.push_back(TotalPrice.back() + MenuItem.Price);
+            TotalCalories.push_back(TotalCalories.back() + MenuItem.TotalCalories);
+            TotalCarbohydrates.push_back(TotalCarbohydrates.back() + MenuItem.Carbohydrates * MenuItem.Weight / 100.f);
+            TotalProteins.push_back(TotalProteins.back() + MenuItem.Proteins * MenuItem.Weight / 100.f);
+            TotalFats.push_back(TotalFats.back() + MenuItem.Fats * MenuItem.Weight / 100.f);
         }
         else
         {
-            TotalPrice.push_back(Item.Price);
-            TotalCalories.push_back(Item.TotalCalories);
-            TotalCarbohydrates.push_back(Item.Carbohydrates * Item.Weight / 100.f);
-            TotalProteins.push_back(Item.Proteins * Item.Weight / 100.f);
-            TotalFats.push_back(Item.Fats * Item.Weight / 100.f);
+            TotalPrice.push_back(MenuItem.Price);
+            TotalCalories.push_back(MenuItem.TotalCalories);
+            TotalCarbohydrates.push_back(MenuItem.Carbohydrates * MenuItem.Weight / 100.f);
+            TotalProteins.push_back(MenuItem.Proteins * MenuItem.Weight / 100.f);
+            TotalFats.push_back(MenuItem.Fats * MenuItem.Weight / 100.f);
         }
-        Meals.push_back(Item);
+        Meals.push_back(MenuItem);
         return *this;
     }
 
@@ -288,12 +315,12 @@ struct DailyRation
     static bool CompareByFactor(const DailyRation& Var1, const DailyRation& Var2) {return Var1.GetFactor() > Var2.GetFactor();}
 
     inline auto Size() const {return Meals.size();}
-    inline MenuItem& operator[](std::size_t Index)
+    inline FMenuItem& operator[](std::size_t Index)
     {
         return Meals[Index];
     }
 
-    std::vector<MenuItem> Meals;
+    std::vector<FMenuItem> Meals;
     std::map<std::string, int> Categories;
     // We store prices in vector, because too many additions and subtractions will add error to the value
     std::vector<float> TotalPrice;
@@ -451,36 +478,16 @@ int main(int argc, char* argv[])
 {
     system("chcp 65001");
 
-    FMenu Menu;
+    FMenu Menu = FMenu::LoadMenuFromFile("../Menu.json");
 
-    // Load menu
-    std::ifstream MenuFile("../Menu.json", std::ifstream::in);
-    if (!MenuFile.is_open())
-        return -1;
-    json JsonMenu;
-    MenuFile >> JsonMenu;
-    for (auto JsonMenuItem : JsonMenu["Menu"])
-    {
-        MenuItem Item = JsonMenuItem.get<MenuItem>();
-        Menu.Push(Item);
-    }
-
-    Menu.ToFile("../Menu2.json");
-
-    // Load options
-    std::ifstream OptionsFile("../Options.json", std::ifstream::in);
-    if (!OptionsFile.is_open())
-        return -1;
-    json JsonOptions;
-    OptionsFile >> JsonOptions;
-    Options::LoadOptions(JsonOptions["Options"]);
+    Options::LoadOptions("../Options.json");
 
     // Filter Menu
-    Menu.Data.erase(std::remove_if(Menu.Data.begin(), Menu.Data.end(), [](const MenuItem& Item)
+    Menu.Data.erase(std::remove_if(Menu.Data.begin(), Menu.Data.end(), [](const FMenuItem& MenuItem)
     {
         // It that lambda returns true then item will be removed
         // If Item is not available
-        if (!Item.Available)
+        if (!MenuItem.Available)
         {
             return true;
         }
@@ -488,14 +495,14 @@ int main(int argc, char* argv[])
         // If it and exception
         for (auto& Exception : Options::Exceptions)
         {
-            if (Item.Name.find(Exception) != std::string::npos || Item.AdditionalName.find(Exception) != std::string::npos)
+            if (MenuItem.Name.find(Exception) != std::string::npos || MenuItem.AdditionalName.find(Exception) != std::string::npos)
                 return true;
         }
 
         // If Item is from category we don't need
         for (auto& Category :Options::Categories)
         {
-            if (Category == Item.Category)
+            if (Category == MenuItem.Category)
             {
                 return false;
             }
