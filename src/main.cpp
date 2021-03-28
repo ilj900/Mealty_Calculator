@@ -509,9 +509,9 @@ void RecursiveComposition(RationsStorage& Storage, FMenu& Menu, size_t StartingI
     return;
 }
 
-std::vector<FDailyRation> GenerateWeeklyRation(RationsStorage& Storage)
+RationsStorage GenerateWeeklyRation(RationsStorage& Storage)
 {
-    std::vector<FDailyRation> WeeklyRation;
+    RationsStorage WeeklyRation;
 
     for (int day = 0; day < 5; ++day)
     {
@@ -522,7 +522,7 @@ std::vector<FDailyRation> GenerateWeeklyRation(RationsStorage& Storage)
 
         int Index = RandomDailyMeal();
         auto DailyRation = Storage[Index];
-        WeeklyRation.push_back(DailyRation);
+        WeeklyRation.Push(DailyRation);
 
         for (auto Meal : DailyRation.Meals)
         {
@@ -532,13 +532,13 @@ std::vector<FDailyRation> GenerateWeeklyRation(RationsStorage& Storage)
                 {
                     if (Single == Meal)
                     {
+                        Storage[i] = Storage.back();
+                        Storage.Pop();
                         if (Storage.Size() == 0)
                         {
                             // TODO
                             throw std::runtime_error("Out of solutions!");
                         }
-                        Storage[i] = Storage.back();
-                        Storage.Pop();
                         --i;
                         break;
                     }
@@ -652,9 +652,21 @@ int main(int argc, char* argv[])
         std::cout << Iter.first << "-meal solutions: " << Iter.second << std::endl;
     }
 
-    //RationsStorage Storage = RationsStorage::LoadFromFile("../Test1.json");
 
-    auto WeeklyRation = GenerateWeeklyRation(Solutions);
+    RationsStorage WeeklyRation;
+    while(true)
+    {
+        try
+        {
+            auto Copy = Solutions;
+            WeeklyRation = GenerateWeeklyRation(Copy);
+        }
+        catch (std::runtime_error)
+        {
+            continue;
+        }
+        break;
+    }
 
     std::ofstream OutputFile;
     OutputFile.open("Ration.txt");
@@ -662,7 +674,7 @@ int main(int argc, char* argv[])
     {
         return -1;
     }
-    for (int i = 0; i < WeeklyRation.size(); ++i)
+    for (int i = 0; i < WeeklyRation.Size(); ++i)
     {
         OutputFile << "Day " << i+1 << std::endl;
         OutputFile << WeeklyRation[i] << std::endl;
